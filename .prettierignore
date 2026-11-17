@@ -1,0 +1,7 @@
+pnpm-lock.yaml
+node_modules
+.next
+coverage
+supabase/.temp
+apps/web/src/server/supabase/database.types.ts
+docs/
