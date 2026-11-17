@@ -1,0 +1,11 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
+allowBuilds:
+  sharp: true
+  unrs-resolver: true
+  supabase: true
+  esbuild: true
+  core-js: false
+  protobufjs: false
