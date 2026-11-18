@@ -10,7 +10,8 @@ Policy-as-code for AI coding agents. A team writes one versioned policy, assigns
 1. Read `docs/STATUS.md`. Pick up from **Next steps**, item 1, unless the user says otherwise.
 2. Check `git branch --show-current` and `git status`. Work goes on the phase branch, never on `main`.
 3. Before writing Next.js code, read `apps/web/AGENTS.md`. This Next.js (16.x) differs from your training data; check `node_modules/next/dist/docs/`.
-4. End sessions (or hand off) with `/save-context`.
+4. Implementation runs through the **builder → checker** loop (see [Build agents](#build-agents-and-the-loop)).
+5. End sessions (or hand off) with `/save-context`.
 
 ## Stack
 
@@ -86,11 +87,11 @@ Pages never query Supabase directly. They call `@/server/data`:
 
 ## Testing workflow
 
-The goal is that a new feature never breaks what already works. Three tiers:
+The goal is that a new feature never breaks what already works. Gates are run by the **checker** agent, never by whoever wrote the code (see [Build agents](#build-agents-and-the-loop)):
 
-1. **While building (every change):** `pnpm typecheck`, plus the unit tests for the package you touched. Keep this loop under 30 seconds.
-2. **Before saying a feature is done:** `pnpm check` must pass.
-3. **Before any commit, push or PR:** `pnpm verify` must pass. Report its real result. If you couldn't run it (no Docker, for example), say so explicitly; never imply it passed.
+1. **After each builder round:** the checker runs the gate it's asked for. Use `pnpm check` (fast) while iterating.
+2. **Before saying a feature is done:** the checker reports `pnpm check` passing.
+3. **Before any commit, push or PR:** the checker reports `pnpm verify` passing. Report its real result. If it couldn't run (no Docker, for example), say so explicitly; never imply it passed.
 
 **What each kind of change must add.** Write the test with the code, not after:
 
@@ -107,9 +108,30 @@ The goal is that a new feature never breaks what already works. Three tiers:
 
 **Never** skip, delete or loosen a failing test to get green; fix the cause or ask. **Never** update snapshots without reading the diff and confirming the change is intended. Say so when you do.
 
+## Build agents and the loop
+
+Two project subagents in `.claude/agents/`, kept separate on purpose so the judge is never the author:
+
+| Agent       | Job                                                                                               | Tools                   | Never                                                                    |
+| ----------- | ------------------------------------------------------------------------------------------------- | ----------------------- | ------------------------------------------------------------------------ |
+| **builder** | Writes and fixes code and the tests the change requires. Runs generators and installs.            | Read, Edit, Write, Bash | Runs a test, type check or lint to grade its own work; commits or pushes |
+| **checker** | Runs tests, type checks, lint, database and e2e. Reports exactly what failed, quoting the output. | Bash, Read (read-only)  | Creates, edits or deletes any file, including formatters and `--fix`     |
+
+**The loop.** The main session is the orchestrator:
+
+1. **Plan.** Take the task from `docs/STATUS.md` → Next steps (or the user). Break it into slices small enough for one builder round.
+2. **Build.** Delegate the slice to **builder** with the goal, the relevant spec section and the acceptance criteria.
+3. **Check.** Delegate to **checker** with the gate to run (`pnpm check` while iterating, `pnpm verify` before a commit). Pass along builder's "For the checker" notes.
+4. **Fix.** On `FAIL`, send checker's failure list to **builder** verbatim, then check again. At most **3 fix rounds** per slice; after that, stop and bring the failures to the user.
+5. **Land.** On `PASS` of `pnpm verify`: review the diff against the spec and CLAUDE.md rules, then offer to commit, push and open a PR (the user merges). Finish with `/save-context`.
+
+Rules for the orchestrator: don't hand-fix code between rounds (send it back to builder). Don't accept a builder fix that deletes, skips or loosens a test; send it back or ask the user. Report checker's verdict as written.
+
+`pnpm verify` never modifies tracked files. The seed check compares and restores, and fails with a message to run `pnpm db:seed:generate`.
+
 ## Definition of done (any feature)
 
-Typed end to end · tests per the table above · RLS test for any new table · audit event for every mutation · empty, loading and error states · keyboard reachable · works in both themes and on mobile · `pnpm verify` green · `docs/STATUS.md` updated (`/save-context`).
+Typed end to end · built by **builder**, verified by **checker** · tests per the table above · RLS test for any new table · audit event for every mutation · empty, loading and error states · keyboard reachable · works in both themes and on mobile · `pnpm verify` green · `docs/STATUS.md` updated (`/save-context`).
 
 ## Git workflow
 

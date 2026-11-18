@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Full local gate: mirrors every CI job (check, database, e2e). Run before any commit or PR.
+# Never modifies tracked files.
 # Fast gate only: `pnpm check`.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -15,16 +16,28 @@ step "Fast gate: format, lint, typecheck, unit tests"
 pnpm check
 
 step "Seed matches the demo dataset"
-before=$(sha256sum supabase/seed.sql | cut -d' ' -f1)
-pnpm db:seed:generate
-after=$(sha256sum supabase/seed.sql | cut -d' ' -f1)
-if [ "$before" != "$after" ]; then
-  echo "supabase/seed.sql was stale and has been regenerated. Include it in your commit (CI diffs it)."
+# Check-only: regenerate, compare, then put the committed files back. verify never
+# modifies tracked files (the Checker agent runs it and must stay read-only).
+seed_files=(supabase/seed.sql supabase/tests/database/seed_status.test.sql)
+backup=$(mktemp -d)
+for f in "${seed_files[@]}"; do cp "$f" "$backup/$(basename "$f")"; done
+pnpm db:seed:generate >/dev/null
+stale=()
+for f in "${seed_files[@]}"; do
+  cmp -s "$f" "$backup/$(basename "$f")" || stale+=("$f")
+  cp "$backup/$(basename "$f")" "$f"
+done
+rm -rf "$backup"
+if [ ${#stale[@]} -gt 0 ]; then
+  echo "Stale generated files: ${stale[*]}. Run \`pnpm db:seed:generate\` and commit the result." >&2
+  exit 1
 fi
 
 step "Database: migrations, seed, pgTAP tests (starts the local stack if needed)"
 if ! pnpm exec supabase status >/dev/null 2>&1; then
-  pnpm exec supabase start
+  # Same lean stack as CI (Postgres, Auth, PostgREST, Kong). The full stack plus a
+  # production build and Playwright exhausts a 2-core Codespace.
+  pnpm exec supabase start -x realtime,storage-api,imgproxy,mailpit,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
 fi
 pnpm db:reset
 pnpm db:test
