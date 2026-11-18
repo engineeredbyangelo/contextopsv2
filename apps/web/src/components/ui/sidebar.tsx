@@ -5,6 +5,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "cn";
 import { Slot } from "radix-ui";
 
+import { useHydrated } from "@/hooks/use-hydrated";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -154,7 +155,12 @@ function Sidebar({
   variant?: "sidebar" | "floating" | "inset";
   collapsible?: "offcanvas" | "icon" | "none";
 }) {
-  const { isMobile, state, openMobile, setOpenMobile } = useSidebar();
+  const { isMobile: providerIsMobile, state, openMobile, setOpenMobile } = useSidebar();
+  // Local edit to shadcn: the provider may already know it's mobile when a streamed
+  // Suspense boundary holding <Sidebar> hydrates. Render the server markup (desktop)
+  // until this component has hydrated, or React throws a hydration mismatch (#418).
+  const hydrated = useHydrated();
+  const isMobile = providerIsMobile && hydrated;
 
   if (collapsible === "none") {
     return (

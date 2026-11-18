@@ -8,11 +8,11 @@ Phase 1 of 4 (Shell and data) is **done**: every route renders from Supabase, re
 
 ## In progress
 
-- Branch `phase-1` is committed locally and not pushed yet. There's no PR into `main` yet.
+- PR #2: https://github.com/engineeredbyangelo/contextopsv2/pull/2. The first CI run failed on intermittent mobile hydration errors (#418); fixed with `useHydrated()` in the sidebar.
 
 ## Next steps
 
-1. Push `phase-1` and open a PR into `main`. Check the CI `e2e` job, which now boots Supabase (Auth + PostgREST) in Actions. The user merges.
+1. PR #2 (`phase-1` → `main`) is open. Get CI green; the user merges.
 2. When the hosted Supabase project exists: `pnpm exec supabase link`, `pnpm exec supabase db push`, set the env vars in Vercel. Don't run the seed or set `DEMO_SIGN_IN` on production.
 3. Start Phase 2 on a `phase-2` branch: register the GitHub App (one App for sign-in and repo access), enable Supabase's GitHub provider with its client credentials, and implement `/auth/callback` with `@supabase/ssr` code exchange, followed by first-sign-in routing to `/onboarding`.
 4. Phase 2 continued: workspaces and `create_workspace`, `requireRole()` guard, invites (hash lookup already exists: `invitation_preview`), App install flow with `GET /user/installations` verification, repo discovery, single-repo sync PR.
@@ -45,3 +45,4 @@ Phase 1 of 4 (Shell and data) is **done**: every route renders from Supabase, re
 - Cache Components: anything that reads the session must be inside `<Suspense>`, or `next build` fails. Check with `NEXT_PUBLIC_SUPABASE_URL= npx next build` (as CI's `check` job builds without env).
 - Seed time bombs: the Harbor invite expires 2026-11-20 (the page then shows "expired"; tests still pass). The `infra-terraform` exemption expires 2027-01-31, which will flip its status and fail `seed_status.test.sql`. Move the dates in `server/demo/northwind.ts` before then.
 - `pnpm db:reset` kills existing sessions; sign in again afterwards.
+- Hydration inside streamed Suspense: a client component in a late boundary sees provider state that changed after the shell hydrated (e.g. `isMobile`). Gate such branches with `useHydrated()` (`src/hooks/use-hydrated.ts`). `components/ui/sidebar.tsx` carries a commented local edit for this. Reproduce with `CI=1 npx playwright test --project=mobile --repeat-each=5`.
