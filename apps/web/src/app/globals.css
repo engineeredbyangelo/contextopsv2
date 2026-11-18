@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "react-diff-view/style/index.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -27,6 +28,9 @@
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -62,6 +66,9 @@
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
+  --success: oklch(0.52 0.14 152);
+  --warning: oklch(0.55 0.13 70);
+  --info: oklch(0.52 0.15 250);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
@@ -99,6 +106,9 @@
   --accent: oklch(0.269 0 0);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
+  --success: oklch(0.78 0.15 155);
+  --warning: oklch(0.82 0.14 80);
+  --info: oklch(0.76 0.12 245);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
@@ -127,4 +137,29 @@
   html {
     @apply font-sans;
   }
+}
+
+/* react-diff-view, themed from our tokens so it reads in both themes. */
+.diff-themed {
+  --diff-font-family: var(--font-geist-mono), ui-monospace, monospace;
+  --diff-text-color: var(--foreground);
+  --diff-gutter-insert-background-color: color-mix(in oklch, var(--success) 22%, transparent);
+  --diff-code-insert-background-color: color-mix(in oklch, var(--success) 12%, transparent);
+  --diff-gutter-delete-background-color: color-mix(in oklch, var(--destructive) 22%, transparent);
+  --diff-code-delete-background-color: color-mix(in oklch, var(--destructive) 12%, transparent);
+  --diff-code-insert-edit-background-color: color-mix(in oklch, var(--success) 35%, transparent);
+  --diff-code-delete-edit-background-color: color-mix(
+    in oklch,
+    var(--destructive) 35%,
+    transparent
+  );
+  --diff-selection-background-color: color-mix(in oklch, var(--info) 30%, transparent);
+  font-size: 0.75rem;
+}
+.diff-themed .diff-gutter {
+  color: var(--muted-foreground);
+}
+.diff-themed .diff-hunk-header {
+  color: var(--muted-foreground);
+  background: var(--muted);
 }
