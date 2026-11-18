@@ -26,3 +26,6 @@ blob-report/
 *.log
 .vercel
 .inngest/
+
+# Playwright session
+apps/web/e2e/.auth/
