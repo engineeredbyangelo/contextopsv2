@@ -393,9 +393,9 @@ NEXT_PUBLIC_APP_URL
 ## Open questions
 
 - [x] One GitHub App for both sign-in and repo access, or a separate OAuth App for sign-in? One App is simpler for users; confirm Supabase's GitHub provider works with the App's client credentials during phase 2 setup. One github app for both sign in and repo access
-- [ ] CLAUDE.md default: full copy or thin file importing `@AGENTS.md`? Full copy
-- [ ] Should Editors be allowed to start rollouts, or Admins only? Editors can start rollout if approved by admin
-- [ ] Add a ContextOps check run on PRs in v2, or hold for v3? check run on V2
-- [ ] Which extra targets come next (Cursor rules, others), based on what early customers use? cursor rules most likely
+- [x] CLAUDE.md default: full copy or thin file importing `@AGENTS.md`? Full copy
+- [x] Should Editors be allowed to start rollouts, or Admins only? Editors can start rollout if approved by admin
+- [x] Add a ContextOps check run on PRs in v2, or hold for v3? check run on V2
+- [x] Which extra targets come next (Cursor rules, others), based on what early customers use? cursor rules most likely
 - [x] Pricing: validate the repo-based tiers with 5 agency conversations before building billing.
-- [ ] Domain, logo and brand for launch (contextops.dev or similar). I already have a domain I will pull from v1 and connect to the rebuild.
+- [x] Domain, logo and brand for launch (contextops.dev or similar). I already have a domain I will pull from v1 and connect to the rebuild.
