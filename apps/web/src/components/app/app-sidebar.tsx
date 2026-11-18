@@ -6,6 +6,7 @@ import { Check, ChevronsUpDown, LogOut, Plus, Search } from "lucide-react";
 import { LogoMark } from "@/components/app/logo";
 import { PersonAvatar } from "@/components/app/person-avatar";
 import { ThemeToggle } from "@/components/app/theme-toggle";
+import { signOut } from "@/server/actions/auth";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -145,11 +146,13 @@ export function AppSidebar({
                   <div className="text-muted-foreground text-xs">{user.email}</div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link href="/login">
-                    <LogOut className="size-4" /> Sign out
-                  </Link>
-                </DropdownMenuItem>
+                <form action={signOut}>
+                  <DropdownMenuItem asChild>
+                    <button type="submit" className="w-full">
+                      <LogOut className="size-4" /> Sign out
+                    </button>
+                  </DropdownMenuItem>
+                </form>
               </DropdownMenuContent>
             </DropdownMenu>
             <span className="group-data-[collapsible=icon]:hidden">

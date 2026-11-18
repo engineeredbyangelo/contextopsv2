@@ -1077,8 +1077,12 @@ export const northwind = {
     string,
     DemoStatus
   >,
-  /** The signed-in demo user until auth lands in phase 2. */
-  currentUserId: userId("maya"),
+  /** The demo account (workspace owner). Local and preview databases only; see DEMO_SIGN_IN. */
+  demoUser: {
+    id: userId("maya"),
+    email: PEOPLE.find((p) => p.key === "maya")!.email,
+    password: "northwind-demo",
+  },
 };
 
 export type NorthwindDataset = typeof northwind;

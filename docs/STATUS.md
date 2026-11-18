@@ -1,38 +1,47 @@
 # Build status
 
-_Last updated: 2026-11-18 · branch `phase-1` · last gate: `pnpm check` passed (`pnpm verify` not yet run)_
+_Last updated: 2026-11-18 · branch `phase-1` · last gate: `pnpm verify` passed (60 pgTAP, 19 unit, 108 e2e, 1 intentional skip)_
 
 ## Where we are
 
-Phase 1 of 4: Shell and data. The UI, routes, schema, RLS and seed are built. Pages still read the Northwind demo dataset through `apps/web/src/server/data` (`demo.ts`) because the hosted Supabase project isn't ready yet.
+Phase 1 of 4 (Shell and data) is **done**: every route renders from Supabase, read with the signed-in user's session under RLS, in both themes on desktop and mobile. Verified against the local Docker stack; the hosted project isn't set up yet.
 
 ## In progress
 
-- All Phase 1 work on `phase-1` is **uncommitted**: routes, domain components, migrations `20261117000001`–`08`, `supabase/tests/database/rls.test.sql`, `e2e/routes.spec.ts` and `scripts/generate-seed.ts`.
-- Testing workflow added: `pnpm check` (fast gate), `pnpm verify` (full CI-equivalent, `scripts/verify.sh`), the `/save-context` skill, and the root `CLAUDE.md`.
+- Branch `phase-1` is committed locally and not pushed yet. There's no PR into `main` yet.
 
 ## Next steps
 
-1. Run `pnpm verify` and fix anything it finds.
-2. Commit the Phase 1 work on `phase-1`, push it, and open a PR into `main` (the user merges).
-3. When the hosted Supabase project exists: run `pnpm exec supabase link`, then add a Supabase-backed module next to `server/data/demo.ts` with the same signatures and switch `server/data/index.ts` to it. Phase 1 is done when every route renders from the database.
-4. Start Phase 2: GitHub sign-in through Supabase Auth, workspaces, roles and invites.
+1. Push `phase-1` and open a PR into `main`. Check the CI `e2e` job, which now boots Supabase (Auth + PostgREST) in Actions. The user merges.
+2. When the hosted Supabase project exists: `pnpm exec supabase link`, `pnpm exec supabase db push`, set the env vars in Vercel. Don't run the seed or set `DEMO_SIGN_IN` on production.
+3. Start Phase 2 on a `phase-2` branch: register the GitHub App (one App for sign-in and repo access), enable Supabase's GitHub provider with its client credentials, and implement `/auth/callback` with `@supabase/ssr` code exchange, followed by first-sign-in routing to `/onboarding`.
+4. Phase 2 continued: workspaces and `create_workspace`, `requireRole()` guard, invites (hash lookup already exists: `invitation_preview`), App install flow with `GET /user/installations` verification, repo discovery, single-repo sync PR.
 
 ## Blockers / waiting on
 
-- Hosted Supabase instance (blocks the step 3 wiring only; local Docker Supabase works for migrations and RLS tests).
+- Hosted Supabase project (blocks step 2 only).
 
 ## Decisions not in the spec
 
-- 2026-11-17: Phase 1 ships with the data layer still on demo data. The functions have the same signatures they will have on Supabase, so wiring swaps one module.
-- 2026-11-18: Session state lives in this file (committed), not in Claude's private memory, which a Codespace rebuild can wipe.
+- 2026-11-17: The data layer keeps stable signatures; pages call `@/server/data` only.
+- 2026-11-18: Session state lives in this file (committed), since a Codespace rebuild can wipe Claude's memory.
+- 2026-11-18: Phase 1 sessions come from a **dev-only demo sign-in** (seeded Northwind owner, password login) behind `DEMO_SIGN_IN=true`, so RLS is exercised before GitHub auth. GitHub sign-in replaces it in Phase 2.
+- 2026-11-18: The data layer loads the user's whole RLS-visible dataset once per request, and `server/data/views.ts` builds view models from it. Fine at Northwind size; move the audit log and rollout items to paginated queries when tenants grow (PostgREST caps queries at 1000 rows).
+- 2026-11-18: Member emails and invite previews go through `security definer` functions (migration `20261118000001_directory.sql`).
+- 2026-11-18: Sign-out uses `scope: "local"` (this device only).
 
 ## Done recently
 
-- 2026-11-17: Monorepo scaffold merged (PR #1). CI jobs: check, database, e2e.
-- 2026-11-17: Phase 1 shell: all routes, sidebar, ⌘K, themes, schema, RLS, Northwind seed.
+- 2026-11-18: Supabase wiring: `server/data/supabase.ts`, `src/proxy.ts`, demo sign-in/out actions, Suspense around `/app` and `/onboarding`.
+- 2026-11-18: Tests: `views.test.ts`; pgTAP `directory.test.sql` and generated `seed_status.test.sql`, which checks the view's status for all 24 repos; e2e `auth.setup.ts` + `auth.spec.ts` (guard, `?next=`, open-redirect, sign-out, bad invite).
+- 2026-11-18: CI e2e job starts Supabase and writes `.env.local`; the seed check also diffs the generated status test.
+- 2026-11-18: Committed the Phase 1 shell; added CLAUDE.md, `pnpm check` / `pnpm verify`, `/save-context`.
+- 2026-11-17: Monorepo scaffold merged (PR #1).
 
 ## Gotchas found
 
-- `apps/web/AGENTS.md` is rewritten by `next dev`. Commit it with your work rather than reverting it.
-- Playwright reuses whatever is on :3000. If a dev server is running, e2e skips the production build; `pnpm verify` refuses to run until it's stopped.
+- `apps/web/AGENTS.md` is rewritten by `next dev`. Commit it rather than reverting it.
+- Playwright reuses whatever is on :3000; `pnpm verify` refuses to run while a dev server is up.
+- Cache Components: anything that reads the session must be inside `<Suspense>`, or `next build` fails. Check with `NEXT_PUBLIC_SUPABASE_URL= npx next build` (as CI's `check` job builds without env).
+- Seed time bombs: the Harbor invite expires 2026-11-20 (the page then shows "expired"; tests still pass). The `infra-terraform` exemption expires 2027-01-31, which will flip its status and fail `seed_status.test.sql`. Move the dates in `server/demo/northwind.ts` before then.
+- `pnpm db:reset` kills existing sessions; sign in again afterwards.

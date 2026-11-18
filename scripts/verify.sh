@@ -22,9 +22,9 @@ if [ "$before" != "$after" ]; then
   echo "supabase/seed.sql was stale and has been regenerated. Include it in your commit (CI diffs it)."
 fi
 
-step "Database: migrations, seed, pgTAP RLS tests"
+step "Database: migrations, seed, pgTAP tests (starts the local stack if needed)"
 if ! pnpm exec supabase status >/dev/null 2>&1; then
-  pnpm exec supabase db start
+  pnpm exec supabase start
 fi
 pnpm db:reset
 pnpm db:test

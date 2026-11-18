@@ -37,7 +37,9 @@ async function Invite({ params }: { params: PageProps<"/invite/[token]">["params
           <GitBranch /> Continue with GitHub
         </PendingButton>
         <p className="text-muted-foreground text-center text-xs">
-          This invite expires {formatDate(invite.expiresAt)}.
+          {new Date(invite.expiresAt) < new Date()
+            ? `This invite expired ${formatDate(invite.expiresAt)}. Ask for a new one.`
+            : `This invite expires ${formatDate(invite.expiresAt)}.`}
         </p>
       </CardContent>
     </Card>

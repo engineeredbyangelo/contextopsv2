@@ -471,11 +471,21 @@ isOneToOne: false
 "has_workspace_role":
 { Args: { "min_role": Database["public"]['Enums']["workspace_role"],"ws": string }; Returns: boolean
                            },
+"invitation_preview":
+{ Args: { "p_token": string }; Returns: {
+              "email": string,"expires_at": string,"invited_by_avatar_url": string,"invited_by_id": string,"invited_by_login": string,"invited_by_name": string,"role": Database["public"]['Enums']["workspace_role"],"workspace_name": string
+            }[]
+                           },
 "is_workspace_member":
 { Args: { "ws": string }; Returns: boolean
                            },
 "log_audit_event":
 { Args: { "p_action": string,"p_metadata"?: Json,"p_subject_id"?: string,"p_subject_type": string,"p_workspace_id": string }; Returns: string
+                           },
+"workspace_member_emails":
+{ Args: { "ws": string }; Returns: {
+              "email": string,"user_id": string
+            }[]
                            }
           }
           Enums: {

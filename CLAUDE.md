@@ -29,6 +29,7 @@ packages/policy-schema/      the Zod policy schema, shared by browser, server an
 packages/renderer/           pure render(policyVersion, repoVariables, target) → string
 supabase/migrations/         SQL migrations, RLS, views     supabase/tests/database/  pgTAP
 supabase/seed.sql            GENERATED from server/demo; never edit by hand (`pnpm db:seed:generate`)
+supabase/tests/database/seed_status.test.sql   GENERATED alongside the seed
 ```
 
 ## Non-negotiable rules (from the spec)
@@ -46,6 +47,7 @@ supabase/seed.sql            GENERATED from server/demo; never edit by hand (`pn
 - **Webhooks:** verify the HMAC (`X-Hub-Signature-256`, Stripe signature). Be idempotent on the delivery id.
 - **Data minimization:** store repo metadata, the target files' managed blocks and hashes, and policy content. Never other source code. Never store GitHub tokens.
 - **Secrets:** only `NEXT_PUBLIC_*` reaches the browser. Keep server-only modules behind `import "server-only"`.
+- **`DEMO_SIGN_IN=true` is never set on production.** It signs anyone in as the seeded Northwind owner (local, CI and preview databases only).
 - **UI:** dark by default, light supported. Status always uses the same badges (Compliant, Drifted, Pending sync, Sync failed, Exempted, Disconnected) and is never shown by color alone. Every list has an empty state with one primary action. Keyboard reachable, WCAG AA in both themes.
 
 ## Product decisions (resolved open questions)
@@ -58,18 +60,29 @@ supabase/seed.sql            GENERATED from server/demo; never edit by hand (`pn
 - Brand and domain carry over from v1.
 - Out of scope for v2: layered policies (the schema reserves `extends`).
 
+## Data layer
+
+Pages never query Supabase directly. They call `@/server/data`:
+
+- `server/data/supabase.ts` loads every row the signed-in user can see, **with their session** (RLS-scoped), once per request (React `cache`). Repo status comes from the `repository_status` view.
+- `server/data/views.ts` is pure: it turns that dataset into view models (`server/data/types.ts`). It is unit-tested against the Northwind dataset.
+- Reads that RLS can't express go through narrow `security definer` functions (`workspace_member_emails`, `invitation_preview`), each with a pgTAP test.
+- `src/proxy.ts` refreshes the session and sends signed-out visitors on `/app/**` and `/onboarding` to `/login?next=…`.
+- Anything that reads the session must sit inside `<Suspense>` (Cache Components). `next build` fails otherwise.
+- Until GitHub sign-in (Phase 2), `/login` offers **Sign in as demo user** when `DEMO_SIGN_IN=true`.
+
 ## Commands
 
-| Command                                   | What                                                                                                                                                    |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pnpm dev`                                | Web app on :3000                                                                                                                                        |
-| `pnpm check`                              | **Fast gate**: format check, lint, typecheck, unit tests (all packages)                                                                                 |
-| `pnpm verify`                             | **Full gate**: `check` + seed regen + Supabase migrations/RLS tests + Playwright on a production build. Mirrors CI. Needs Docker; stop `pnpm dev` first |
-| `pnpm --filter @contextops/renderer test` | Unit tests for one package (also `@contextops/policy-schema`, `@contextops/web`)                                                                        |
-| `pnpm db:start` / `db:reset` / `db:test`  | Local Supabase; re-apply migrations and seed; pgTAP tests                                                                                               |
-| `pnpm db:types`                           | Regenerate `server/supabase/database.types.ts` after any migration                                                                                      |
-| `pnpm db:seed:generate`                   | Rebuild `supabase/seed.sql` from `server/demo`                                                                                                          |
-| `pnpm format`                             | Prettier write                                                                                                                                          |
+| Command                                   | What                                                                                                                                                                                                          |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm dev`                                | Web app on :3000                                                                                                                                                                                              |
+| `pnpm check`                              | **Fast gate**: format check, lint, typecheck, unit tests (all packages)                                                                                                                                       |
+| `pnpm verify`                             | **Full gate**: `check` + seed regen + Supabase migrations/RLS tests + Playwright on a production build. Mirrors CI. Needs Docker (starts the local Supabase stack if it isn't running); stop `pnpm dev` first |
+| `pnpm --filter @contextops/renderer test` | Unit tests for one package (also `@contextops/policy-schema`, `@contextops/web`)                                                                                                                              |
+| `pnpm db:start` / `db:reset` / `db:test`  | Local Supabase; re-apply migrations and seed; pgTAP tests                                                                                                                                                     |
+| `pnpm db:types`                           | Regenerate `server/supabase/database.types.ts` after any migration                                                                                                                                            |
+| `pnpm db:seed:generate`                   | Rebuild `supabase/seed.sql` from `server/demo`                                                                                                                                                                |
+| `pnpm format`                             | Prettier write                                                                                                                                                                                                |
 
 ## Testing workflow
 
@@ -81,16 +94,16 @@ The goal is that a new feature never breaks what already works. Three tiers:
 
 **What each kind of change must add.** Write the test with the code, not after:
 
-| Change                                               | Required tests                                                                                                                                                                                                          |
-| ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Renderer / policy schema                             | Vitest unit and snapshot tests. Cover: managed-block round trip, content outside markers preserved, first sync into a file without markers, `{{variable}}` fill, each target. Determinism: render twice, assert equal   |
-| New table or migration                               | RLS enabled; pgTAP test in `supabase/tests/database/` asserting a workspace-A user sees **zero** workspace-B rows, plus role limits. Then `pnpm db:types` (and `db:seed:generate` if demo data changed)                 |
-| Server action                                        | Vitest: Zod rejects bad input, `requireRole()` denies lower roles, audit event written, Inngest event emitted                                                                                                           |
-| Inngest / GitHub code                                | Vitest with **MSW** mocking the GitHub API (no live calls in tests). Cover: running twice opens one PR (idempotency), "already compliant" opens no PR, 403/429 backoff, mapping each error to its human-readable reason |
-| Webhook handler                                      | Valid signature accepted; invalid or missing signature rejected; duplicate delivery id ignored                                                                                                                          |
-| New route or page                                    | Add it to `ROUTES` in `apps/web/e2e/routes.spec.ts` (checks 2xx, no console or hydration errors, no horizontal overflow, both themes, desktop and mobile). Build empty, loading and error states                        |
-| Core user flow (sign-up, rollout, drift remediation) | A Playwright flow test in `apps/web/e2e/`                                                                                                                                                                               |
-| Bug fix                                              | First a failing test that reproduces the bug, then the fix                                                                                                                                                              |
+| Change                                               | Required tests                                                                                                                                                                                                                                                                                              |
+| ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Renderer / policy schema                             | Vitest unit and snapshot tests. Cover: managed-block round trip, content outside markers preserved, first sync into a file without markers, `{{variable}}` fill, each target. Determinism: render twice, assert equal                                                                                       |
+| New table or migration                               | RLS enabled; pgTAP test in `supabase/tests/database/` asserting a workspace-A user sees **zero** workspace-B rows, plus role limits. Then `pnpm db:types` (and `db:seed:generate` if demo data changed)                                                                                                     |
+| Server action                                        | Vitest: Zod rejects bad input, `requireRole()` denies lower roles, audit event written, Inngest event emitted                                                                                                                                                                                               |
+| Inngest / GitHub code                                | Vitest with **MSW** mocking the GitHub API (no live calls in tests). Cover: running twice opens one PR (idempotency), "already compliant" opens no PR, 403/429 backoff, mapping each error to its human-readable reason                                                                                     |
+| Webhook handler                                      | Valid signature accepted; invalid or missing signature rejected; duplicate delivery id ignored                                                                                                                                                                                                              |
+| New route or page                                    | Add it to `ROUTES` in `apps/web/e2e/routes.spec.ts` (runs signed in as the demo user via `e2e/auth.setup.ts`; signed-out behaviour goes in `e2e/auth.spec.ts`) (checks 2xx, no console or hydration errors, no horizontal overflow, both themes, desktop and mobile). Build empty, loading and error states |
+| Core user flow (sign-up, rollout, drift remediation) | A Playwright flow test in `apps/web/e2e/`                                                                                                                                                                                                                                                                   |
+| Bug fix                                              | First a failing test that reproduces the bug, then the fix                                                                                                                                                                                                                                                  |
 
 **Never** skip, delete or loosen a failing test to get green; fix the cause or ask. **Never** update snapshots without reading the diff and confirming the change is intended. Say so when you do.
 

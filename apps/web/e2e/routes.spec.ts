@@ -18,7 +18,7 @@ const ROUTES = [
   "/pricing",
   "/login",
   "/onboarding",
-  "/invite/demo-token",
+  "/invite/demo-invite-lena", // raw token for the seeded invite (stored hashed)
   `/app/${ws}`,
   `/app/${ws}/repositories`,
   `/app/${ws}/repositories?status=drifted`,

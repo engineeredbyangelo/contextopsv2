@@ -484,3 +484,6 @@ insert into public.audit_events (actor_id, actor_type, created_at, action, subje
   (null, 'github', '2026-11-15T16:47:00.000Z', 'repository.drift_detected', 'repository', '00000006-0000-4000-8000-000000000011', '{"repository":"harbor-analytics/harbor-dashboard","target":"copilot"}'::jsonb, '0000000f-0000-4000-8000-0000000000c6', '00000002-0000-4000-8000-000000000001', '2026-11-15T16:47:00.000Z'),
   ('00000001-0000-4000-8000-000000000003', 'user', '2026-11-15T18:40:00.000Z', 'policy.draft_saved', 'policy', '00000007-0000-4000-8000-000000000001', '{}'::jsonb, '0000000f-0000-4000-8000-0000000000c7', '00000002-0000-4000-8000-000000000001', '2026-11-15T18:40:00.000Z'),
   (null, 'system', '2026-11-16T03:00:00.000Z', 'drift_scan.completed', 'workspace', '00000002-0000-4000-8000-000000000001', '{"repositories_checked":22}'::jsonb, '0000000f-0000-4000-8000-0000000000c8', '00000002-0000-4000-8000-000000000001', '2026-11-16T03:00:00.000Z');
+
+-- Demo sign-in (DEMO_SIGN_IN=true). Seed data never runs against production.
+update auth.users set encrypted_password = extensions.crypt('northwind-demo', extensions.gen_salt('bf')) where id = '00000001-0000-4000-8000-000000000001';

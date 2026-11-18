@@ -21,8 +21,8 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
-      - name: seed.sql matches the demo dataset
-        run: pnpm db:seed:generate && git diff --exit-code supabase/seed.sql
+      - name: Seed and seed-status test match the demo dataset
+        run: pnpm db:seed:generate && git diff --exit-code supabase/seed.sql supabase/tests/database/seed_status.test.sql
       - run: pnpm build
 
   database:
@@ -41,7 +41,7 @@ jobs:
       - run: pnpm db:test
 
   e2e:
-    name: Every route, both themes, desktop and mobile
+    name: Every route from Supabase, both themes, desktop and mobile
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -51,6 +51,17 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # Pages read Supabase through Auth (GoTrue), PostgREST and the Kong gateway.
+      - run: pnpm exec supabase start -x realtime,storage-api,imgproxy,mailpit,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
+      - name: Point the app at the local stack
+        run: |
+          eval "$(pnpm exec supabase status -o env)"
+          {
+            echo "NEXT_PUBLIC_APP_URL=http://localhost:3000"
+            echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL"
+            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY"
+            echo "DEMO_SIGN_IN=true"
+          } > apps/web/.env.local
       - run: pnpm --filter @contextops/web exec playwright install --with-deps chromium
       - run: pnpm --filter @contextops/web test:e2e
       - uses: actions/upload-artifact@v7
