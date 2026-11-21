@@ -127,6 +127,8 @@ Two project subagents in `.claude/agents/`, kept separate on purpose so the judg
 
 Rules for the orchestrator: don't hand-fix code between rounds (send it back to builder). Don't accept a builder fix that deletes, skips or loosens a test; send it back or ask the user. Report checker's verdict as written.
 
+Checker's `PASS` means the gates passed **and** its rule review of `git diff main...HEAD` found nothing.
+
 `pnpm verify` never modifies tracked files. The seed check compares and restores, and fails with a message to run `pnpm db:seed:generate`.
 
 ## Definition of done (any feature)
