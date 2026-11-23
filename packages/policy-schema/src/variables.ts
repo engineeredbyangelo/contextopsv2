@@ -20,3 +20,28 @@ export function findPlaceholders(value: unknown): string[] {
   walk(value);
   return [...found].sort();
 }
+
+export type FilledText = {
+  /** The text with every known placeholder replaced by its value. */
+  text: string;
+  /** Distinct placeholder names with no value in `variables`, sorted. They stay in `text` verbatim. */
+  missing: string[];
+};
+
+/**
+ * Replace `{{name}}` (whitespace inside the braces allowed) with `variables[name]`.
+ *
+ * - One pass: a value that itself contains `{{…}}` is inserted literally, never expanded again.
+ * - A placeholder with no value is left exactly as written and reported in `missing`, so the gap
+ *   is visible in the rendered file and the sync PR rather than silently becoming an empty string.
+ * - Only own keys count, so `{{toString}}` is never filled from the prototype.
+ */
+export function fillPlaceholders(text: string, variables: RepoVariables): FilledText {
+  const missing = new Set<string>();
+  const filled = text.replace(PLACEHOLDER, (match, name: string) => {
+    if (Object.hasOwn(variables, name)) return variables[name]!;
+    missing.add(name);
+    return match;
+  });
+  return { text: filled, missing: [...missing].sort() };
+}

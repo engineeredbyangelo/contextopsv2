@@ -5,3 +5,9 @@ coverage
 supabase/.temp
 apps/web/src/server/supabase/database.types.ts
 docs/
+
+# Hand-reviewed renderer output; byte-exact file snapshots
+packages/renderer/src/__snapshots__
+
+# Agent git worktrees (other checkouts of this repo)
+.claude/worktrees/
