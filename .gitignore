@@ -29,3 +29,6 @@ blob-report/
 
 # Playwright session
 apps/web/e2e/.auth/
+
+# Agent git worktrees (other checkouts of this repo)
+.claude/worktrees/

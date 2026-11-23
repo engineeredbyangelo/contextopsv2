@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   bumpSemver,
   compareSemver,
+  fillPlaceholders,
   findPlaceholders,
   isTargetId,
   policyContentSchema,
@@ -76,6 +77,22 @@ describe("variables", () => {
         list: ["node {{nodeVersion}}", "{{packageManager}}"],
       }),
     ).toEqual(["nodeVersion", "packageManager", "testCommand"]);
+  });
+
+  it("fills placeholders in one pass and keeps missing ones verbatim", () => {
+    expect(
+      fillPlaceholders("{{packageManager}} test && {{ packageManager }} run {{script}}", {
+        packageManager: "pnpm",
+      }),
+    ).toEqual({ text: "pnpm test && pnpm run {{script}}", missing: ["script"] });
+    expect(fillPlaceholders("{{a}}", { a: "{{b}} $& $1", b: "x" })).toEqual({
+      text: "{{b}} $& $1",
+      missing: [],
+    });
+    expect(fillPlaceholders("{{toString}}", {})).toEqual({
+      text: "{{toString}}",
+      missing: ["toString"],
+    });
   });
 
   it("validates variable names", () => {

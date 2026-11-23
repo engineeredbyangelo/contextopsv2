@@ -11,6 +11,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@contextops/policy-schema": "workspace:*"
+    "@contextops/policy-schema": "workspace:*",
+    "@noble/hashes": "^2.4.0"
   }
 }
